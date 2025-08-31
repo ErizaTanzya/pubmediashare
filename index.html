@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Melqy | Public Media Uploader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script type="module" src="https://esm.sh/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#121821;
+      --panel-2:#0f141c;
+      --stroke:#273043;
+      --text:#e8eef6;
+      --muted:#93a0b4;
+      --accent:#00e5a8;
+      --accent-2:#7c5cff;
+      --danger:#ff4d67;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
+      --radius-sm:12px;
+      --stroke-w:1.5px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0; background: radial-gradient(1200px 700px at 70% -10%, rgba(124,92,255,.15), transparent 60%) , var(--bg);
+      color:var(--text); font-family:'Poppins',sans-serif; overflow-x:hidden;
+    }
+
+    /* Header / Hero */
+    .nav{
+      position:sticky; top:0; z-index:50; backdrop-filter: blur(8px);
+      background:linear-gradient(180deg, rgba(11,15,20,.8), rgba(11,15,20,.35));
+      border-bottom: var(--stroke-w) solid var(--stroke);
+    }
+    .nav-inner{max-width:1200px; margin:auto; padding:14px 18px; display:flex; align-items:center; gap:14px}
+    .logo{
+      width:36px; height:36px; display:grid; place-items:center; border:var(--stroke-w) solid var(--stroke);
+      border-radius:10px; background:linear-gradient(135deg,var(--panel),var(--panel-2)); box-shadow:var(--shadow)
+    }
+    .brand{font-weight:800; letter-spacing:.5px}
+    .pill{
+      margin-left:auto; font-size:.9rem; color:var(--muted)
+    }
+
+    .hero{
+      max-width:1200px; margin:28px auto 0; padding:28px 18px 6px;
+      display:grid; gap:18px; grid-template-columns:1.1fr .9fr;
+    }
+    @media (max-width:900px){ .hero{grid-template-columns:1fr} }
+
+    .hero-card{
+      border:var(--stroke-w) solid var(--stroke); border-radius:var(--radius);
+      background:linear-gradient(180deg,var(--panel),var(--panel-2));
+      padding:28px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+      animation:slideIn .7s ease-out both;
+    }
+    .shine{
+      position:absolute; inset:-40% -20% auto auto; width:65%; height:65%;
+      background:radial-gradient( closest-side, rgba(0,229,168,.12), transparent 60% );
+      transform:rotate(20deg);
+    }
+    h1{margin:0 0 8px; font-size:clamp(1.4rem,2.6vw,2.2rem)}
+    .sub{color:var(--muted); margin:0 0 14px}
+    .stack{display:flex; flex-wrap:wrap; gap:10px}
+    .chip{
+      border:var(--stroke-w) solid var(--stroke); border-radius:999px; padding:8px 12px; font-size:.9rem;
+      background:#0f161f; color:#b7c3d6;
+    }
+
+    /* Uploader */
+    .uploader{
+      display:grid; gap:12px; border:var(--stroke-w) solid var(--stroke); border-radius:var(--radius);
+      background:linear-gradient(180deg,#0f141c,#0b1017); padding:16px; box-shadow:var(--shadow)
+    }
+    .drop{
+      border:2px dashed var(--stroke); border-radius:var(--radius-sm);
+      background:#0c121a; padding:18px; display:grid; place-items:center; text-align:center; color:var(--muted);
+      transition:.25s; min-height:110px
+    }
+    .drop.drag{border-color:var(--accent); color:#bffff0; transform:scale(1.01)}
+    .controls{display:flex; gap:10px; flex-wrap:wrap}
+    .btn{
+      border:var(--stroke-w) solid var(--stroke); background:#0f141c; color:var(--text);
+      padding:10px 14px; border-radius:12px; cursor:pointer; transition:transform .15s, border-color .2s;
+      font-weight:600
+    }
+    .btn:hover{transform:translateY(-1px); border-color:#3b4961}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2)); border-color:transparent; color:#051013}
+    .btn.danger{border-color:#4a2030; background:#1a0c12; color:#ffb6c1}
+    .muted{color:var(--muted); font-size:.9rem}
+
+    .progress{
+      height:6px; border-radius:999px; background:#0d1520; overflow:hidden; border:var(--stroke-w) solid var(--stroke)
+    }
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .2s}
+
+    /* Gallery */
+    .section{max-width:1200px; margin:22px auto; padding:0 18px}
+    .section h2{margin:0 0 12px}
+    .gallery{
+      display:grid; gap:14px;
+      grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+    }
+    .card{
+      border:var(--stroke-w) solid var(--stroke); border-radius:16px; background:#0f151e; overflow:hidden; display:flex; flex-direction:column;
+      animation:fade .6s ease both;
+    }
+    .thumb{
+      aspect-ratio:1/1; width:100%; object-fit:cover; background:#0a0f15; display:block
+    }
+    .meta{padding:10px 12px; display:grid; gap:8px}
+    .name{font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .row{display:flex; gap:8px; justify-content:space-between}
+    .row .btn{font-size:.8rem; padding:8px 10px}
+
+    .loadmore-wrap{display:grid; place-items:center; margin-top:16px}
+    .ghost{opacity:.6; pointer-events:none}
+
+    /* Modal viewer */
+    .modal{position:fixed; inset:0; background:rgba(6,10,16,.85); display:none; place-items:center; z-index:60}
+    .modal.open{display:grid}
+    .modal-inner{
+      width:min(92vw,1100px); max-height:86vh; border-radius:16px; overflow:hidden;
+      border:var(--stroke-w) solid var(--stroke); background:#0c1219; box-shadow:var(--shadow);
+      display:grid; grid-template-rows:auto 1fr;
+      animation:pop .2s ease;
+    }
+    .modal-top{display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:var(--stroke-w) solid var(--stroke); background:#0f141c}
+    .spacer{flex:1}
+    .viewer{padding:10px; display:grid; place-items:center; overflow:auto}
+    .viewer img,.viewer video{max-width:100%; max-height:74vh; border-radius:12px; outline:var(--stroke-w) solid var(--stroke)}
+    .icon{width:18px;height:18px;vertical-align:-3px}
+
+    /* Identity / About */
+    .about{
+      margin:26px auto; max-width:1200px; padding:0 18px 28px;
+      display:grid; gap:18px; grid-template-columns:160px 1fr;
+      border-top:var(--stroke-w) solid var(--stroke);
+    }
+    @media (max-width:780px){ .about{grid-template-columns:1fr} }
+    .pfp{
+      width:110px; height:110px; border-radius:999px; border:var(--stroke-w) solid var(--stroke);
+      background:#0f151e url('https://iili.io/KKM4Jjf.md.jpg') center/cover no-repeat; box-shadow:var(--shadow)
+    }
+    .about h3{margin:6px 0}
+    .links{display:flex; flex-wrap:wrap; gap:10px}
+    .link{
+      border:var(--stroke-w) solid var(--stroke); padding:8px 12px; border-radius:999px; text-decoration:none; color:var(--text);
+      background:#0f141c; transition:.2s
+    }
+    .link:hover{border-color:#3b4961}
+    .foot{
+      text-align:center; color:var(--muted); padding:18px; border-top:var(--stroke-w) solid var(--stroke)
+    }
+
+    /* Animations */
+    @keyframes slideIn{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+    @keyframes fade{from{opacity:0} to{opacity:1}}
+    @keyframes pop{from{transform:scale(.98); opacity:0} to{transform:scale(1); opacity:1}}
+
+    /* Reveal on scroll */
+    .reveal{opacity:0; transform:translateY(8px); transition:opacity .5s, transform .5s}
+    .reveal.show{opacity:1; transform:none}
+
+    /* Toast */
+    .toast{position:fixed; bottom:18px; right:18px; background:#0f141c; padding:10px 12px; border-radius:10px; border:var(--stroke-w) solid var(--stroke); box-shadow:var(--shadow); display:none}
+    .toast.show{display:block}
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <div class="nav">
+    <div class="nav-inner">
+      <div class="logo"></div>
+      <div class="brand">Public Media Uploader</div>
+      <div class="pill">Ertawanny Production</div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-card">
+      <div class="shine"></div>
+      <h1>Unggah & Bagikan Media Secara Publik</h1>
+      <p class="sub">Upload gambar atau video ke Storage publik, lihat, unduh, salin tautan, dan hapus media. Dibuat oleh <b>Melqy Ertawanny</b>. menggunakan </p>
+      <div class="stack">
+        <span class="chip">Graphic Designer</span>
+        <span class="chip">Newbie Developer</span>
+        <span class="chip">Basic Programmer</span>
+        <span class="chip">UI/UX Designer</span>
+      </div>
+    </div>
+
+    <!-- Uploader Panel -->
+    <div class="uploader">
+      <div id="drop" class="drop">
+        <div>
+          <div style="font-weight:600">Tarik & letakkan file di sini</div>
+          <div class="muted">atau pilih file dari perangkat</div>
+        </div>
+      </div>
+      <div class="controls">
+        <input id="file" type="file" multiple />
+        <button id="btnUpload" class="btn primary">Upload</button>
+        <button id="btnRefresh" class="btn">Muat Ulang Galeri</button>
+      </div>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div id="status" class="muted">Siap mengunggah…</div>
+    </div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section">
+    <h2 class="reveal">Galeri Publik</h2>
+    <div id="gallery" class="gallery"></div>
+    <div class="loadmore-wrap">
+      <button id="loadMore" class="btn">Muat Lebih Banyak</button>
+    </div>
+  </section>
+
+  <!-- Identity / About -->
+  <section class="about">
+    <div class="pfp" title="Melqy Ertawanny"></div>
+    <div>
+      <h3>Tentang Website & Pembuat</h3>
+      <p class="muted">Website ini dibuat oleh <b>Melqy Ertawanny</b> — pelajar SMK yang hobi <i>Desain</i>, belajar pemrograman, dan membangun proyek-proyek web. Tujuan situs ini adalah mempermudah publik untuk mengunggah dan berbagi media secara cepat.</p>
+      <div class="links">
+        <a class="link" href="mailto:ertawanny27@gmail.com"> Email</a>
+        <a class="link" href="https://www.instagram.com/melqyertwny?igsh=MTVoeGxmZHdxcGt1bQ==" target="_blank"> Instagram</a>
+        <a class="link" href="https://github.com/Ertawanny" target="_blank"> GitHub</a>
+        <a class="link" href="https://www.tiktok.com/@_melqy" target="_blank"> TikTok</a>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast">Done.</div>
+
+  <!-- Modal Viewer -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-inner">
+      <div class="modal-top">
+        <span id="modalName" class="muted" style="max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis"></span>
+        <span class="spacer"></span>
+        <button id="btnCopy" class="btn">Salin Link</button>
+        <a id="btnDL" class="btn" download>Unduh</a>
+        <button id="btnDel" class="btn danger">Hapus</button>
+        <button id="btnClose" class="btn">Tutup</button>
+      </div>
+      <div class="viewer" id="viewer"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // ====== Supabase Config (punyamu) ======
+    const supabase = createClient(
+      "https://masgeszktzpdxxydcgml.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hc2dlc3prdHpwZHh4eWRjZ21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MDE0MTAsImV4cCI6MjA3MjE3NzQxMH0.RIYB9G7W9-ZIuPtoMczXkXbSZfVPxSZNKJN4_W2wB2A"
+    );
+    const BUCKET = "media";
+
+    // ====== UI helpers ======
+    const $ = (q)=>document.querySelector(q);
+    const gallery = $("#gallery");
+    const toast = $("#toast");
+    const bar = $("#bar");
+    const statusEl = $("#status");
+
+    function notify(msg, ms=1800){
+      toast.textContent = msg; toast.classList.add("show");
+      setTimeout(()=>toast.classList.remove("show"), ms);
+    }
+
+    // ====== Telegram Notifier ======
+  async function sendToTelegram(fileUrl, fileName) {
+    const botToken = "8309483032:AAEyb9s0rJ8wwBcy1abj8ptiO9O48iEaqGg";
+    const chatId = "8369352197";
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          document: fileUrl,
+          caption: ` File baru diupload: ${fileName}\n\n ${fileUrl}`
+        })
+      });
+
+      const data = await res.json();
+      console.log("Telegram response:", data);
+
+      if (!data.ok) {
+        console.error(" Gagal kirim ke Telegram:", data.description);
+      } else {
+        console.log(" Media terkirim ke Telegram");
+      }
+    } catch (err) {
+      console.error(" Error fetch Telegram:", err);
+    }
+  }
+
+    // ====== Upload Logic ======
+    const fileInput = $("#file");
+    const btnUpload = $("#btnUpload");
+    const btnRefresh = $("#btnRefresh");
+    const drop = $("#drop");
+
+    // drag & drop
+    ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); drop.classList.add("drag");
+    }));
+    ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); drop.classList.remove("drag");
+    }));
+    drop.addEventListener("drop", e=>{
+      const dt = e.dataTransfer; if(!dt?.files?.length) return;
+      fileInput.files = dt.files; notify(`${dt.files.length} file dipilih`);
+    });
+
+    btnUpload.addEventListener("click", async ()=>{
+  const files = fileInput.files;
+  if(!files || !files.length){ notify("Pilih file dulu"); return; }
+  btnUpload.classList.add("ghost"); btnUpload.disabled = true;
+  bar.style.width = "8%";
+  let done = 0;
+  for(const f of files){
+    const path = `${Date.now()}-${f.name}`.replace(/\s+/g,"_");
+    const { error } = await supabase.storage.from(BUCKET).upload(path, f, { cacheControl: "3600", upsert: false });
+    if(error){ notify("Upload gagal: "+error.message, 2200); break; }
+    done++; bar.style.width = Math.min(8 + Math.round((done/files.length)*92), 100) + "%";
+
+    //  Tambahkan bagian ini:
+    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    await sendToTelegram(pub.publicUrl);
+  }
+  notify(`Upload selesai (${done}/${files.length})`);
+  statusEl.textContent = "Selesai mengunggah.";
+  btnUpload.disabled = false; btnUpload.classList.remove("ghost");
+  await refreshGallery(true);
+  setTimeout(()=>bar.style.width="0%", 800);
+});
+
+    btnRefresh.addEventListener("click", ()=> refreshGallery(true));
+
+    // ====== Gallery Logic (pagination + reveal on scroll) ======
+    let page = 0;
+    const PAGE_SIZE = 24;
+    let loading = false;
+    let endReached = false;
+
+    async function listPage(p=0){
+      return await supabase.storage.from(BUCKET).list("", {
+        limit: PAGE_SIZE, offset: p*PAGE_SIZE, sortBy: { column: "created_at", order: "desc" }
+      });
+    }
+
+    async function renderItems(items){
+      for(const item of items){
+        const { data:pub } = supabase.storage.from(BUCKET).getPublicUrl(item.name);
+        const url = pub.publicUrl;
+        const isVideo = /\.(mp4|webm|ogg)$/i.test(item.name);
+        const card = document.createElement("div");
+        card.className = "card reveal";
+        card.innerHTML = `
+          ${isVideo
+            ? `<video class="thumb" src="${url}" muted playsinline></video>`
+            : `<img class="thumb" src="${url}" alt="${item.name}" loading="lazy">`
+          }
+          <div class="meta">
+            <div class="name" title="${item.name}">${item.name}</div>
+            <div class="row">
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn" data-act="view">Lihat</button>
+                <a class="btn" href="${url}" download>Unduh</a>
+                <button class="btn" data-act="copy">Salin Link</button>
+              </div>
+              <button class="btn danger" data-act="del">Hapus</button>
+            </div>
+          </div>
+        `;
+        // actions
+        card.addEventListener("click", async (e)=>{
+          const act = e.target?.dataset?.act; if(!act) return;
+          e.stopPropagation();
+          if(act==="view"){ openModal(item.name, url); }
+          if(act==="copy"){ await navigator.clipboard.writeText(url); notify("Link disalin"); }
+          if(act==="del"){ await deleteItem(item.name, card); }
+        });
+        // open modal when clicking media directly
+        card.querySelector(".thumb").addEventListener("click", ()=>openModal(item.name, url));
+        gallery.appendChild(card);
+        observe(card);
+      }
+    }
+
+    async function refreshGallery(reset=false){
+      if(reset){ page=0; endReached=false; gallery.innerHTML=""; }
+      if(endReached || loading) return;
+      loading = true;
+      const { data, error } = await listPage(page);
+      loading = false;
+      if(error){ notify("Gagal memuat galeri"); return; }
+      if(!data?.length){ endReached = true; $("#loadMore").classList.add("ghost"); return; }
+      await renderItems(data);
+      page++;
+    }
+
+    $("#loadMore").addEventListener("click", ()=> refreshGallery(false));
+    // infinite scroll
+    window.addEventListener("scroll", ()=>{
+      if(endReached || loading) return;
+      const nearBottom = window.innerHeight + window.scrollY > document.body.offsetHeight - 400;
+      if(nearBottom) refreshGallery(false);
+    });
+
+    // ====== Modal Logic ======
+    const modal = $("#modal");
+    const viewer = $("#viewer");
+    const modalName = $("#modalName");
+    const btnDL = $("#btnDL");
+    const btnDel = $("#btnDel");
+    const btnCopy = $("#btnCopy");
+    $("#btnClose").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+
+    function openModal(name, url){
+      modalName.textContent = name;
+      viewer.innerHTML = "";
+      const isVideo = /\.(mp4|webm|ogg)$/i.test(name);
+      viewer.appendChild(Object.assign(document.createElement(isVideo?"video":"img"), {
+        src:url, ...(isVideo?{controls:true}:{})
+      }));
+      btnDL.href = url; btnDL.setAttribute("download", name);
+      btnDel.onclick = ()=> deleteItem(name);
+      btnCopy.onclick = async ()=>{ await navigator.clipboard.writeText(url); notify("Link disalin"); };
+      modal.classList.add("open"); modal.setAttribute("aria-hidden","false");
+    }
+    function closeModal(){ modal.classList.remove("open"); modal.setAttribute("aria-hidden","true"); }
+
+    async function deleteItem(name, cardEl){
+      if(!confirm("Yakin ingin menghapus file ini?")) return;
+      const { error } = await supabase.storage.from(BUCKET).remove([name]);
+      if(error){ notify("Gagal hapus: "+error.message, 2200); return; }
+      notify("Berhasil dihapus");
+      if(cardEl) cardEl.remove();
+      closeModal();
+    }
+
+    // ====== Reveal-on-scroll ======
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("show"); io.unobserve(e.target); }});
+    }, {threshold:.18});
+    function observe(el){ el.classList.add("reveal"); io.observe(el); }
+
+    // Initial load
+    document.addEventListener("DOMContentLoaded", ()=>{
+      refreshGallery(true);
+    });
+  </script>
+
+  <div class="foot">© <span id="year"></span> Melqy Ertawanny • Newbie Developer. </div>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>
