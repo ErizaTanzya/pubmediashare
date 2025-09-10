@@ -171,7 +171,6 @@
   </style>
 </head>
 <body>
-
   <!-- Navigation -->
   <div class="nav">
     <div class="nav-inner">
@@ -257,14 +256,12 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // ====== Supabase Config (punyamu) ======
     const supabase = createClient(
       "https://jflniixjvcnoplsyxcxy.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmbG5paXhqdmNub3Bsc3l4Y3h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODM0OTYsImV4cCI6MjA3MzA1OTQ5Nn0.hxYPztWWym6JLCK5Jj7YzJY8l7J6yqL5a0jmlbaxx0k"
     );
     const BUCKET = "media";
 
-    // ====== UI helpers ======
     const $ = (q)=>document.querySelector(q);
     const gallery = $("#gallery");
     const toast = $("#toast");
@@ -276,42 +273,37 @@
       setTimeout(()=>toast.classList.remove("show"), ms);
     }
 
-    // ====== Telegram Notifier ======
-  async function sendToTelegram(fileUrl, fileName) {
-    const botToken = "8309483032:AAEyb9s0rJ8wwBcy1abj8ptiO9O48iEaqGg";
-    const chatId = "8369352197";
+    async function sendToTelegram(fileUrl, fileName) {
+      const botToken = "8309483032:AAEyb9s0rJ8wwBcy1abj8ptiO9O48iEaqGg";
+      const chatId = "8369352197";
 
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          document: fileUrl,
-          caption: ` File baru diupload: ${fileName}\n\n ${fileUrl}`
-        })
-      });
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            document: fileUrl,
+            caption: `📦 File baru diupload: ${fileName}\n\n🔗 ${fileUrl}`
+          })
+        });
 
-      const data = await res.json();
-      console.log("Telegram response:", data);
-
-      if (!data.ok) {
-        console.error(" Gagal kirim ke Telegram:", data.description);
-      } else {
-        console.log(" Media terkirim ke Telegram");
+        const data = await res.json();
+        if (!data.ok) {
+          console.error("❌ Gagal kirim ke Telegram:", data.description);
+        } else {
+          console.log("✅ Media terkirim ke Telegram");
+        }
+      } catch (err) {
+        console.error("🚨 Error fetch Telegram:", err);
       }
-    } catch (err) {
-      console.error(" Error fetch Telegram:", err);
     }
-  }
 
-    // ====== Upload Logic ======
     const fileInput = $("#file");
     const btnUpload = $("#btnUpload");
     const btnRefresh = $("#btnRefresh");
     const drop = $("#drop");
 
-    // drag & drop
     ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => {
       e.preventDefault(); e.stopPropagation(); drop.classList.add("drag");
     }));
@@ -324,31 +316,31 @@
     });
 
     btnUpload.addEventListener("click", async ()=>{
-  const files = fileInput.files;
-  if(!files || !files.length){ notify("Pilih file dulu"); return; }
-  btnUpload.classList.add("ghost"); btnUpload.disabled = true;
-  bar.style.width = "8%";
-  let done = 0;
-  for(const f of files){
-    const path = `${Date.now()}-${f.name}`.replace(/\s+/g,"_");
-    const { error } = await supabase.storage.from(BUCKET).upload(path, f, { cacheControl: "3600", upsert: false });
-    if(error){ notify("Upload gagal: "+error.message, 2200); break; }
-    done++; bar.style.width = Math.min(8 + Math.round((done/files.length)*92), 100) + "%";
+      const files = fileInput.files;
+      if(!files || !files.length){ notify("Pilih file dulu"); return; }
+      btnUpload.classList.add("ghost"); btnUpload.disabled = true;
+      bar.style.width = "8%";
+      let done = 0;
+      for(const f of files){
+        const path = `${Date.now()}-${f.name}`.replace(/\s+/g,"_");
+        const { error } = await supabase.storage.from(BUCKET).upload(path, f, { cacheControl: "3600", upsert: false });
+        if(error){ notify("Upload gagal: "+error.message, 2200); break; }
+        done++; bar.style.width = Math.min(8 + Math.round((done/files.length)*92), 100) + "%";
 
-    //  Tambahkan bagian ini:
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    await sendToTelegram(pub.publicUrl);
-  }
-  notify(`Upload selesai (${done}/${files.length})`);
-  statusEl.textContent = "Selesai mengunggah.";
-  btnUpload.disabled = false; btnUpload.classList.remove("ghost");
-  await refreshGallery(true);
-  setTimeout(()=>bar.style.width="0%", 800);
-});
+        const pub = supabase.storage.from(BUCKET).getPublicUrl(path);
+        if (pub?.data?.publicUrl) {
+          await sendToTelegram(pub.data.publicUrl, f.name);
+        }
+      }
+      notify(`Upload selesai (${done}/${files.length})`);
+      statusEl.textContent = "Selesai mengunggah.";
+      btnUpload.disabled = false; btnUpload.classList.remove("ghost");
+      await refreshGallery(true);
+      setTimeout(()=>bar.style.width="0%", 800);
+    });
 
     btnRefresh.addEventListener("click", ()=> refreshGallery(true));
 
-    // ====== Gallery Logic (pagination + reveal on scroll) ======
     let page = 0;
     const PAGE_SIZE = 24;
     let loading = false;
@@ -362,8 +354,10 @@
 
     async function renderItems(items){
       for(const item of items){
-        const { data:pub } = supabase.storage.from(BUCKET).getPublicUrl(item.name);
-        const url = pub.publicUrl;
+        const pub = supabase.storage.from(BUCKET).getPublicUrl(item.name);
+        const url = pub?.data?.publicUrl;
+        if (!url) continue;
+
         const isVideo = /\.(mp4|webm|ogg)$/i.test(item.name);
         const card = document.createElement("div");
         card.className = "card reveal";
@@ -384,7 +378,6 @@
             </div>
           </div>
         `;
-        // actions
         card.addEventListener("click", async (e)=>{
           const act = e.target?.dataset?.act; if(!act) return;
           e.stopPropagation();
@@ -392,7 +385,6 @@
           if(act==="copy"){ await navigator.clipboard.writeText(url); notify("Link disalin"); }
           if(act==="del"){ await deleteItem(item.name, card); }
         });
-        // open modal when clicking media directly
         card.querySelector(".thumb").addEventListener("click", ()=>openModal(item.name, url));
         gallery.appendChild(card);
         observe(card);
@@ -412,14 +404,12 @@
     }
 
     $("#loadMore").addEventListener("click", ()=> refreshGallery(false));
-    // infinite scroll
     window.addEventListener("scroll", ()=>{
       if(endReached || loading) return;
       const nearBottom = window.innerHeight + window.scrollY > document.body.offsetHeight - 400;
       if(nearBottom) refreshGallery(false);
     });
 
-    // ====== Modal Logic ======
     const modal = $("#modal");
     const viewer = $("#viewer");
     const modalName = $("#modalName");
@@ -434,40 +424,34 @@
       viewer.innerHTML = "";
       const isVideo = /\.(mp4|webm|ogg)$/i.test(name);
       viewer.appendChild(Object.assign(document.createElement(isVideo?"video":"img"), {
-        src:url, ...(isVideo?{controls:true}:{})
+        src:url, ...(isVideo?{controls:true}:{}),
       }));
-      btnDL.href = url; btnDL.setAttribute("download", name);
-      btnDel.onclick = ()=> deleteItem(name);
+      btnDL.href = url; btnDL.download = name;
       btnCopy.onclick = async ()=>{ await navigator.clipboard.writeText(url); notify("Link disalin"); };
-      modal.classList.add("open"); modal.setAttribute("aria-hidden","false");
+      btnDel.onclick = async ()=>{ await deleteItem(name); closeModal(); };
+      modal.classList.add("show");
     }
-    function closeModal(){ modal.classList.remove("open"); modal.setAttribute("aria-hidden","true"); }
 
-    async function deleteItem(name, cardEl){
-      if(!confirm("Yakin ingin menghapus file ini?")) return;
+    function closeModal(){ modal.classList.remove("show"); }
+
+    async function deleteItem(name, el){
+      const ok = confirm(`Hapus file "${name}"?`);
+      if(!ok) return;
       const { error } = await supabase.storage.from(BUCKET).remove([name]);
-      if(error){ notify("Gagal hapus: "+error.message, 2200); return; }
+      if(error){ notify("Gagal hapus"); return; }
       notify("Berhasil dihapus");
-      if(cardEl) cardEl.remove();
-      closeModal();
+      el?.remove?.();
     }
 
-    // ====== Reveal-on-scroll ======
-    const io = new IntersectionObserver((entries)=>{
-      entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("show"); io.unobserve(e.target); }});
-    }, {threshold:.18});
-    function observe(el){ el.classList.add("reveal"); io.observe(el); }
+    const observer = new IntersectionObserver((entries)=>{
+      entries.forEach((entry)=>{
+        if(entry.isIntersecting){ entry.target.classList.add("visible"); }
+      });
+    }, { threshold: 0.2 });
 
-    // Initial load
-    document.addEventListener("DOMContentLoaded", ()=>{
-      refreshGallery(true);
-    });
+    function observe(el){ observer.observe(el); }
+
+    refreshGallery(true);
   </script>
-
-  <div class="foot">© <span id="year"></span> Melqy Ertawanny • Newbie Developer. </div>
-  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
 </body>
-
 </html>
-
-
